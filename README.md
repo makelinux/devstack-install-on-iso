@@ -1,5 +1,5 @@
 # devstack-install-on-iso
-Automatic installation of Devstack/OpenStack on virtual Ubuntu-Server-14.04.3
+Automatic installation of DevStack/OpenStack on virtual Ubuntu-Server-14.04.3
 
 Usage:
 
