@@ -98,7 +98,6 @@ devstack-install-on-iso()
 	%post --nochroot 
 	mkdir /target/usr/local/bin
 	cp /cdrom/devstack-start /target/usr/local/bin
-	cp /cdrom/devstack-start /target
 	mkdir -p /target/home/$USER/.ssh/
 	cp /cdrom/devstack-start /target/home/$USER/
 	echo $(cat ~/.ssh/id_rsa.pub) >> /target/home/$USER/.ssh/authorized_keys
