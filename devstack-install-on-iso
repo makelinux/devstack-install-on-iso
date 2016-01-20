@@ -1,0 +1,126 @@
+#!/bin/bash 
+
+devstack-start()
+{
+	test -d devstack || git clone https://git.openstack.org/openstack-dev/devstack
+	devstack/tools/create-stack-user.sh; 
+	cd devstack;
+	if [ ! -e local.conf ]; then
+		cat > local.conf <<-'EOF'
+			[[local|localrc]]
+			ADMIN_PASSWORD=password
+			DATABASE_PASSWORD=$ADMIN_PASSWORD
+			DATABASE_PASSWORD=$ADMIN_PASSWORD
+			RABBIT_PASSWORD=$ADMIN_PASSWORD
+			SERVICE_PASSWORD=$ADMIN_PASSWORD
+			DEST=/opt/stack/
+			LOGDIR=$DEST/logs
+			LOGFILE=$DEST/logs/stack.sh.log
+			LOG_COLOR=False
+			#LOGDAYS=100
+			#OFFLINE=True
+		EOF
+	fi
+	./stack.sh
+	. openrc admin
+	nova tenant-network-list
+	nova image-list
+	nova boot --flavor 1 --image cirros-0.3.4-x86_64-uec my_inst
+	nova list
+	nova stop my_inst
+	nova delete my_inst
+}
+
+kickstart-cfg()
+{
+	echo en > $1/isolinux/lang
+	cat > $1/isolinux/isolinux.cfg <<- EOF
+		default install
+		label install
+		  menu label ^Install Ubuntu Server
+		  kernel /install/vmlinuz
+		  append file=/cdrom/preseed/ubuntu-server.seed initrd=/install/initrd.gz ks=cdrom:/ks.cfg preseed/file=/cdrom/ks.preseed --
+	EOF
+	cat > $1/ks.cfg <<-EOF
+		lang en_US
+		langsupport en_US
+		keyboard us
+		timezone $(cat /etc/timezone) 
+		rootpw --disabled
+		user $USER --fullname $USER --password $USER
+		text
+		install
+		cdrom
+		bootloader --location=mbr 
+		zerombr yes
+		clearpart --all --initlabel 
+		auth --useshadow --enablemd5 
+		firewall --disabled 
+		skipx
+		reboot
+	EOF
+	cat > $1/ks.preseed <<-EOF
+		d-i user-setup/allow-password-weak boolean true
+		d-i partman/confirm boolean true
+		d-i partman-partitioning/confirm_write_new_label boolean true
+		d-i partman/choose_partition select finish
+		d-i partman/confirm_nooverwrite boolean true
+		d-i pkgsel/include string git openssh-server rabbitmq-server qemu-kvm apache2 libapache2-mod-wsgi mysql-server libvirt-bin libvirt-dev
+	EOF
+}
+
+devstack-install-on-iso()
+{
+	iso_url="$1"
+
+	: ${iso_url:=http://releases.ubuntu.com/14.04.3/ubuntu-14.04.3-server-amd64.iso}
+	iso_base=$(basename $iso_url)
+	iso=$(find -L ~/Downloads/ -name "$iso_base")
+	if [ ! -e "$iso" ]; then
+		wget -nc $iso_url -P ~/Downloads || return
+		iso=~/Downloads/$iso_base
+	fi
+	sudo mkdir -p /mnt/tmp
+	sudo mount $iso /mnt/tmp -o user,ro
+	cat /mnt/tmp/.disk/*info
+	read a b c < /mnt/tmp/.disk/*info
+	fs=$a-$b
+	if [ ! -e $fs ]; then
+		cp -a /mnt/tmp $fs
+		chmod -R +w $fs
+	fi
+	sudo umount /mnt/tmp
+	kickstart-cfg $fs
+	declare -f devstack-start > $fs/devstack-start
+	echo devstack-start >> $fs/devstack-start
+	chmod +x $fs/devstack-start 
+	cat >> $fs/ks.cfg <<-EOF
+	%post --nochroot 
+	mkdir /target/usr/local/bin
+	cp /cdrom/devstack-start /target/usr/local/bin
+	cp /cdrom/devstack-start /target
+	mkdir -p /target/home/$USER/.ssh/
+	cp /cdrom/devstack-start /target/home/$USER/
+	echo $(cat ~/.ssh/id_rsa.pub) >> /target/home/$USER/.ssh/authorized_keys
+	chown -R $USER /target/home/$USER/.ssh/
+	touch /target/done
+	%end
+	EOF
+	image=$fs-devstack
+	mkisofs -q -disable-deep-relocation -rational-rock -cache-inodes -joliet \
+		-full-iso9660-filenames -no-emul-boot -boot-load-size 4 -boot-info-table \
+		-eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat \
+		-o $image.iso $fs
+	qemu-img create -f qcow2 $image.qcow2 10G
+	qemu-system-x86_64 -enable-kvm -m 1024 --cdrom $image.iso $image.qcow2
+	# References:
+	# http://askubuntu.com/questions/122505/how-do-i-create-a-completely-unattended-install-of-ubuntu
+	# https://help.ubuntu.com/lts/installation-guide/i386/ch04s06.html
+	# https://help.ubuntu.com/community/KickstartCompatibility
+}
+
+if [ `which "$0"` = "$SHELL" ]; then
+	echo Function devstack-install-on-iso is loaded into the shell environment
+else
+	devstack-install-on-iso "$@"
+fi
