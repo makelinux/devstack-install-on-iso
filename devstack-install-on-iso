@@ -13,7 +13,7 @@ devstack-start()
 			DATABASE_PASSWORD=$ADMIN_PASSWORD
 			RABBIT_PASSWORD=$ADMIN_PASSWORD
 			SERVICE_PASSWORD=$ADMIN_PASSWORD
-			DEST=/opt/stack/
+			DEST=/opt/stack
 			LOGDIR=$DEST/logs
 			LOGFILE=$DEST/logs/stack.sh.log
 			LOG_COLOR=False
@@ -65,7 +65,7 @@ kickstart-cfg()
 		d-i partman-partitioning/confirm_write_new_label boolean true
 		d-i partman/choose_partition select finish
 		d-i partman/confirm_nooverwrite boolean true
-		d-i pkgsel/include string git openssh-server rabbitmq-server qemu-kvm apache2 libapache2-mod-wsgi mysql-server libvirt-bin libvirt-dev
+		d-i pkgsel/include string git openssh-server rabbitmq-server qemu-kvm apache2 libapache2-mod-wsgi libvirt-bin libvirt-dev
 	EOF
 }
 
@@ -83,6 +83,7 @@ devstack-install-on-iso()
 	sudo mkdir -p /mnt/tmp
 	sudo mount $iso /mnt/tmp -o user,ro
 	cat /mnt/tmp/.disk/*info
+	echo
 	read a b c < /mnt/tmp/.disk/*info
 	fs=$a-$b
 	if [ ! -e $fs ]; then
@@ -97,12 +98,11 @@ devstack-install-on-iso()
 	cat >> $fs/ks.cfg <<-EOF
 	%post --nochroot 
 	mkdir /target/usr/local/bin
-	cp /cdrom/devstack-start /target/usr/local/bin
 	mkdir -p /target/home/$USER/.ssh/
 	cp /cdrom/devstack-start /target/home/$USER/
+	cp /cdrom/devstack-start /target/usr/local/bin
 	echo $(cat ~/.ssh/id_rsa.pub) >> /target/home/$USER/.ssh/authorized_keys
 	chown -R $USER /target/home/$USER/.ssh/
-	touch /target/done
 	%end
 	EOF
 	image=$fs-devstack
@@ -111,7 +111,7 @@ devstack-install-on-iso()
 		-eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat \
 		-o $image.iso $fs
 	qemu-img create -f qcow2 $image.qcow2 10G
-	qemu-system-x86_64 -enable-kvm -m 1024 --cdrom $image.iso $image.qcow2
+	qemu-system-x86_64 -smp 2 -enable-kvm -m 3G --cdrom $image.iso $image.qcow2
 	# References:
 	# http://askubuntu.com/questions/122505/how-do-i-create-a-completely-unattended-install-of-ubuntu
 	# https://help.ubuntu.com/lts/installation-guide/i386/ch04s06.html
