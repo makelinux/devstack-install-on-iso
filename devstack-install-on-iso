@@ -1,16 +1,18 @@
 #!/bin/bash
 
 devstack-install-on-iso()
-{
-	iso_url="$1"
+{	apt-get update
+	apt-get install -y qemu
+	#iso_url="$1"
 
-	: ${iso_url:=http://releases.ubuntu.com/14.04.3/ubuntu-14.04.3-server-amd64.iso}
-	iso_base=$(basename $iso_url)
-	iso=$(find -L ~/Downloads/ -name "$iso_base")
-	if [ ! -e "$iso" ]; then
-		wget -nc $iso_url -P ~/Downloads || return
-		iso=~/Downloads/$iso_base
-	fi
+	#: ${iso_url:=http://releases.ubuntu.com/14.04.3/ubuntu-14.04.3-server-amd64.iso}
+	#iso_base=$(basename $iso_url)
+	#iso=$(find -L ~/Downloads/ -name "$iso_base")
+	#if [ ! -e "$iso" ]; then
+	#	wget -nc $iso_url -P ~/Downloads || return
+	#	iso=~/Downloads/$iso_base
+	#fi
+	iso="add the path to your ubuntu iso since one 14.04 is no longer available only as torrent"
 	sudo mkdir -p /mnt/tmp
 	sudo mount $iso /mnt/tmp -o user,ro
 	cat /mnt/tmp/.disk/*info
