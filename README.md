@@ -16,8 +16,9 @@ Automatic installation of DevStack/OpenStack on virtual Ubuntu-Server-14.04
  - Creates kickstart configuration 
  - Runs qemu and installs automatically Ubuntu-Server with kickstart
 
-### Troubleshooting
- - When predefined image release is outdated, please provide updated URL to updated image release.
 ###Script devstack-start
  - creates local.conf with default configuration 
  - and runs devstack installation.
+
+### Troubleshooting
+ - When predefined image release is outdated, please provide updated URL to updated image release.
