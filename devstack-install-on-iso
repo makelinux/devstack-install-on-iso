@@ -4,7 +4,7 @@ devstack-install-on-iso()
 {
 	iso_url="$1"
 
-	: ${iso_url:=http://releases.ubuntu.com/14.04.3/ubuntu-14.04.3-server-amd64.iso}
+	: ${iso_url:=http://releases.ubuntu.com/14.04.4/ubuntu-14.04.4-server-amd64.iso}
 	iso_base=$(basename $iso_url)
 	iso=$(find -L ~/Downloads/ -name "$iso_base")
 	if [ ! -e "$iso" ]; then
